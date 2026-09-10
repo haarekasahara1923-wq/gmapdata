@@ -4,43 +4,157 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Google Maps Data Extractor Pro</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .highlight-pulse {
+            animation: ringPulse 1.5s ease-in-out 2;
+        }
+        @keyframes ringPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
+            50% { box-shadow: 0 0 0 8px rgba(79, 70, 229, 0.15); }
+        }
+    </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen flex flex-col">
 
     <!-- Navbar -->
     <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
-            <div class="flex items-center space-x-3 cursor-pointer" id="navHome">
-                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-500 flex items-center justify-center text-white">
-                    <i data-lucide="map-pin" class="w-5 h-5"></i>
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="showDashboard()">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-500 flex items-center justify-center text-white shadow-md">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
                 </div>
                 <div>
-                    <h1 class="text-lg font-bold text-slate-900">G-Map Data Extractor Pro</h1>
+                    <h1 class="text-lg font-bold text-slate-900 leading-tight">G-Map Data Extractor</h1>
                     <p class="text-xs text-slate-400">Google Maps Lead Finder · Smart Deduplication</p>
                 </div>
             </div>
-            <button type="button" id="openNewExtractionBtn"
-                class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md transition-all">
-                <i data-lucide="plus" class="w-4 h-4"></i>
+
+            <!-- New Extraction Button in Navbar -->
+            <button type="button" id="openNewExtractionBtn" onclick="focusExtractionForm()"
+                class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 shadow-md shadow-indigo-100 transition-all cursor-pointer">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
                 New Extraction
             </button>
         </div>
     </header>
 
-    <!-- Main -->
+    <!-- Main Container -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
 
         <!-- ===== DASHBOARD VIEW ===== -->
         <section id="dashboardView" class="space-y-6">
 
-            <!-- KPI Cards -->
+            <!-- 1. EXTRACTION CARD (Directly accessible on Dashboard) -->
+            <div id="extractionCard" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden transition-all duration-300">
+                <div class="p-5 border-b border-slate-100 bg-gradient-to-r from-indigo-50/60 to-white flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900">Start New Lead Extraction</h2>
+                            <p class="text-xs text-slate-500">Already extracted businesses are automatically skipped (Zero Duplicates)</p>
+                        </div>
+                    </div>
+                </div>
+
+                <form id="extractForm" onsubmit="handleExtractSubmit(event)" class="p-5 space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-end">
+                        <!-- Niche Input -->
+                        <div class="md:col-span-5">
+                            <label for="nicheInput" class="block text-xs font-semibold text-slate-700 mb-1.5">
+                                Niche / Business Category <span class="text-rose-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                                </span>
+                                <input type="text" id="nicheInput" required
+                                    placeholder="e.g. Dentists, Gyms, Real Estate, Hotels, Cafes"
+                                    class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-slate-50/50 hover:bg-white transition-all">
+                            </div>
+                        </div>
+
+                        <!-- Location Input -->
+                        <div class="md:col-span-4">
+                            <label for="locationInput" class="block text-xs font-semibold text-slate-700 mb-1.5">
+                                City / Location
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/></svg>
+                                </span>
+                                <input type="text" id="locationInput"
+                                    placeholder="e.g. Delhi, Mumbai, Sector 62 Noida"
+                                    class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-slate-50/50 hover:bg-white transition-all">
+                            </div>
+                        </div>
+
+                        <!-- Max Results Select -->
+                        <div class="md:col-span-3">
+                            <label for="maxSelect" class="block text-xs font-semibold text-slate-700 mb-1.5">
+                                Max Leads
+                            </label>
+                            <div class="relative">
+                                <select id="maxSelect"
+                                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white font-medium text-slate-700">
+                                    <option value="20">20 leads</option>
+                                    <option value="50" selected>50 leads</option>
+                                    <option value="100">100 leads</option>
+                                    <option value="200">200 leads</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Suggestions & Action Buttons -->
+                    <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <span class="text-xs text-slate-400 font-medium">Quick suggestions:</span>
+                            <button type="button" onclick="setQuickNiche('Dentists', 'Delhi')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-xs text-slate-600 font-medium transition-colors">Dentists in Delhi</button>
+                            <button type="button" onclick="setQuickNiche('Gym', 'Mumbai')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-xs text-slate-600 font-medium transition-colors">Gym in Mumbai</button>
+                            <button type="button" onclick="setQuickNiche('Hotels', 'Jaipur')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-xs text-slate-600 font-medium transition-colors">Hotels in Jaipur</button>
+                            <button type="button" onclick="setQuickNiche('Real Estate', 'Noida')" class="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-xs text-slate-600 font-medium transition-colors">Real Estate in Noida</button>
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button type="button" id="stopExtractBtn" onclick="handleStopExtract()" disabled
+                                class="px-4 py-2.5 rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
+                                ⛔ Stop
+                            </button>
+                            <button type="submit" id="startExtractBtn"
+                                class="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95 shadow-md shadow-indigo-100 transition-all cursor-pointer">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                                Start Extraction
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Live Progress Banner -->
+                    <div id="statusBanner" class="hidden p-3.5 rounded-xl bg-indigo-50 border border-indigo-100 transition-all">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <div class="flex items-center gap-2.5 text-indigo-900 text-xs font-medium">
+                                <div class="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                                <span id="statusText" class="font-semibold">Starting extraction...</span>
+                            </div>
+                            <div class="flex items-center gap-4 text-xs font-bold">
+                                <span class="text-emerald-700 bg-emerald-100/70 px-2.5 py-1 rounded-lg">✅ Extracted: <span id="newCount">0</span></span>
+                                <span class="text-amber-700 bg-amber-100/70 px-2.5 py-1 rounded-lg">⚠️ Skipped (Duplicate): <span id="skippedCount">0</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- 2. KPI CARDS -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
                     <div class="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
-                        <i data-lucide="calendar-clock" class="w-5 h-5"></i>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
                     </div>
                     <div>
                         <div class="text-2xl font-bold text-slate-900" id="dashTotalSessions">0</div>
@@ -49,7 +163,7 @@
                 </div>
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
                     <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
-                        <i data-lucide="users" class="w-5 h-5"></i>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
                     </div>
                     <div>
                         <div class="text-2xl font-bold text-slate-900" id="dashTotalLeads">0</div>
@@ -58,7 +172,7 @@
                 </div>
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
                     <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
-                        <i data-lucide="folder-tree" class="w-5 h-5"></i>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>
                     </div>
                     <div>
                         <div class="text-2xl font-bold text-slate-900" id="dashTotalNiches">0</div>
@@ -67,7 +181,7 @@
                 </div>
                 <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
                     <div class="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0">
-                        <i data-lucide="phone-call" class="w-5 h-5"></i>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
                     </div>
                     <div>
                         <div class="text-2xl font-bold text-slate-900" id="dashTotalPhones">0</div>
@@ -76,24 +190,27 @@
                 </div>
             </div>
 
-            <!-- History Table -->
+            <!-- 3. DATE-WISE HISTORY TABLE -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                            <i data-lucide="history" class="w-5 h-5 text-indigo-600"></i>
+                            <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                             Extraction History (Date-wise)
                         </h2>
-                        <p class="text-xs text-slate-400 mt-0.5">Click any row to view its leads</p>
+                        <p class="text-xs text-slate-400 mt-0.5">Click any row to open and view the leads table</p>
                     </div>
                     <div class="flex items-center gap-2">
                         <div class="relative">
-                            <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400"></i>
-                            <input type="text" id="historySearchInput" placeholder="Search..."
-                                class="pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-400 outline-none w-44">
+                            <input type="text" id="historySearchInput" placeholder="Search history..."
+                                oninput="filterHistoryTable()"
+                                class="pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-400 outline-none w-48">
+                            <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                            </span>
                         </div>
-                        <button id="refreshHistoryBtn" title="Refresh" class="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-all">
-                            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        <button onclick="loadDashboard()" title="Refresh" class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-all cursor-pointer">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                         </button>
                     </div>
                 </div>
@@ -108,7 +225,7 @@
                                 <th class="py-3 px-4 text-center">New Leads</th>
                                 <th class="py-3 px-4 text-center">Skipped</th>
                                 <th class="py-3 px-4 text-center">Status</th>
-                                <th class="py-3 px-4 text-right">Actions</th>
+                                <th class="py-3 px-4 text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody id="historyTableBody" class="divide-y divide-slate-100">
@@ -116,10 +233,10 @@
                                 <td colspan="7" class="py-16 text-center">
                                     <div class="flex flex-col items-center gap-2 text-slate-400">
                                         <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
-                                            <i data-lucide="inbox" class="w-6 h-6"></i>
+                                            <svg class="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/></svg>
                                         </div>
                                         <p class="text-sm font-medium text-slate-600">No extractions yet</p>
-                                        <p class="text-xs">Click "New Extraction" to get started</p>
+                                        <p class="text-xs">Enter a niche in the form above and click "Start Extraction"</p>
                                     </div>
                                 </td>
                             </tr>
@@ -137,50 +254,54 @@
         <!-- ===== LEADS DETAIL VIEW ===== -->
         <section id="leadsDetailView" class="hidden space-y-5">
 
-            <!-- Breadcrumb & Export Bar -->
-            <div class="flex flex-wrap items-center justify-between gap-3">
+            <!-- Breadcrumb & Download Buttons -->
+            <div class="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                 <div class="flex items-center gap-3">
-                    <button type="button" id="backToHistoryBtn"
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-700 bg-white hover:bg-slate-100 border border-slate-200 shadow-sm transition-all">
-                        <i data-lucide="arrow-left" class="w-4 h-4"></i> Back
+                    <button type="button" onclick="showDashboard()"
+                        class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+                        Back to Dashboard
                     </button>
                     <div>
                         <h2 class="text-lg font-bold text-slate-900" id="detailNicheTitle">—</h2>
-                        <p class="text-xs text-slate-400" id="detailSubTitle">—</p>
+                        <p class="text-xs text-slate-500" id="detailSubTitle">—</p>
                     </div>
                 </div>
 
-                <!-- Download Buttons -->
+                <!-- Direct Download Buttons -->
                 <div class="flex items-center gap-2">
-                    <button id="detailExportCsvBtn"
-                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm transition-all">
-                        <i data-lucide="download" class="w-3.5 h-3.5 text-slate-500"></i>
+                    <button type="button" onclick="downloadSessionExport('csv')"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-50 shadow-sm transition-all cursor-pointer">
+                        <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
                         Download CSV
                     </button>
-                    <button id="detailExportExcelBtn"
-                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all">
-                        <i data-lucide="table-properties" class="w-3.5 h-3.5"></i>
+                    <button type="button" onclick="downloadSessionExport('excel')"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                         Download Excel
                     </button>
-                    <button id="detailExportPdfBtn"
-                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition-all">
-                        <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                    <button type="button" onclick="downloadSessionExport('pdf')"
+                        class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition-all cursor-pointer">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
                         Download PDF
                     </button>
                 </div>
             </div>
 
-            <!-- Leads Table -->
+            <!-- Leads Table Card -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
                 <div class="p-4 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
                     <div class="flex items-center gap-2">
                         <span class="text-sm font-semibold text-slate-700">Extracted Leads</span>
-                        <span class="text-xs px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-100" id="detailLeadsCountBadge">0</span>
+                        <span class="text-xs px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-100" id="detailLeadsCountBadge">0</span>
                     </div>
                     <div class="relative">
-                        <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400"></i>
-                        <input type="text" id="detailFilterInput" placeholder="Filter leads..."
-                            class="pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-400 outline-none w-52">
+                        <input type="text" id="detailFilterInput" placeholder="Filter by name, phone, address..."
+                            oninput="filterLeadsTable()"
+                            class="pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 text-xs focus:ring-2 focus:ring-indigo-400 outline-none w-64">
+                        <span class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                        </span>
                     </div>
                 </div>
 
@@ -211,116 +332,14 @@
 
     </main>
 
-    <!-- ===== NEW EXTRACTION MODAL ===== -->
-    <div id="extractionModal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" style="display:none;">
-        <div class="bg-white w-full max-w-xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden">
-
-            <div class="p-5 border-b border-slate-200 flex items-center justify-between">
-                <div>
-                    <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
-                        <i data-lucide="search" class="w-5 h-5 text-indigo-600"></i>
-                        New Extraction
-                    </h3>
-                    <p class="text-xs text-slate-400 mt-0.5">Already extracted businesses will be auto-skipped (deduplicated)</p>
-                </div>
-                <button type="button" id="closeModalBtn" class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-
-            <form id="modalExtractForm" class="p-5 space-y-4">
-                <!-- Niche Input -->
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 mb-1.5">Niche / Business Type <span class="text-rose-500">*</span></label>
-                    <div class="relative">
-                        <i data-lucide="briefcase" class="w-4 h-4 absolute left-3 top-3 text-slate-400"></i>
-                        <input type="text" id="modalNicheInput" required
-                            placeholder="e.g. Dentists, Gyms, Real Estate, Hotels, Cafes"
-                            class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-400 focus:border-indigo-400 outline-none transition-all">
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <!-- Location -->
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">City / Location</label>
-                        <div class="relative">
-                            <i data-lucide="map" class="w-4 h-4 absolute left-3 top-3 text-slate-400"></i>
-                            <input type="text" id="modalLocationInput"
-                                placeholder="e.g. Delhi, Mumbai, Noida"
-                                class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-400 outline-none">
-                        </div>
-                    </div>
-                    <!-- Max Results -->
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-600 mb-1.5">Max Results</label>
-                        <div class="relative">
-                            <i data-lucide="layers" class="w-4 h-4 absolute left-3 top-3 text-slate-400"></i>
-                            <select id="modalMaxSelect"
-                                class="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-indigo-400 outline-none bg-white">
-                                <option value="20">20 leads</option>
-                                <option value="50" selected>50 leads</option>
-                                <option value="100">100 leads</option>
-                                <option value="200">200 leads</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Quick Chips -->
-                <div class="flex flex-wrap gap-1.5">
-                    <span class="text-xs text-slate-400 font-medium self-center">Quick:</span>
-                    <button type="button" class="quick-chip px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-xs text-slate-600 font-medium transition-colors">Dentists in Delhi</button>
-                    <button type="button" class="quick-chip px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-xs text-slate-600 font-medium transition-colors">Gym in Mumbai</button>
-                    <button type="button" class="quick-chip px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-xs text-slate-600 font-medium transition-colors">Hotels in Jaipur</button>
-                    <button type="button" class="quick-chip px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-xs text-slate-600 font-medium transition-colors">CA in Noida</button>
-                </div>
-
-                <!-- Live Progress -->
-                <div id="modalStatusBanner" class="hidden p-3 rounded-xl bg-indigo-50 border border-indigo-100">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2 text-indigo-900 text-xs font-medium">
-                            <div class="w-3.5 h-3.5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                            <span id="modalStatusText">Starting...</span>
-                        </div>
-                        <div class="flex items-center gap-3 text-xs font-bold">
-                            <span class="text-emerald-700">✅ New: <span id="modalNewCount">0</span></span>
-                            <span class="text-amber-700">⚠️ Skipped: <span id="modalSkippedCount">0</span></span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Modal Footer Buttons -->
-                <div class="flex items-center justify-between pt-2 border-t border-slate-100">
-                    <button type="button" id="modalStopBtn" disabled
-                        class="px-4 py-2 rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all">
-                        ⛔ Stop
-                    </button>
-                    <div class="flex items-center gap-2">
-                        <button type="button" id="cancelModalBtn"
-                            class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors">
-                            Cancel
-                        </button>
-                        <button type="submit" id="modalStartBtn"
-                            class="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-md transition-all">
-                            <i data-lucide="play" class="w-3.5 h-3.5"></i>
-                            Start Extraction
-                        </button>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Toast -->
+    <!-- Toast Notification -->
     <div id="toast" class="fixed bottom-5 right-5 z-50 opacity-0 pointer-events-none transition-all duration-300 translate-y-4">
-        <div class="bg-slate-900 text-white text-xs px-4 py-3 rounded-xl shadow-lg flex items-center gap-2">
-            <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400" id="toastIcon"></i>
+        <div class="bg-slate-900 text-white text-xs px-4 py-3 rounded-xl shadow-xl flex items-center gap-2" id="toastContainer">
             <span id="toastMsg">Done</span>
         </div>
     </div>
 
+    <!-- App Script -->
     <script src="/static/js/app.js"></script>
-    <script>lucide.createIcons();</script>
 </body>
 </html>
