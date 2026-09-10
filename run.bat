@@ -1,22 +1,20 @@
 @echo off
-title Google Maps Data Extractor Pro - SaaS Edition
+title Google Maps Data Extractor Pro - Next.js SaaS Edition
 echo ========================================================
-echo    Google Maps Data Extractor Pro - SaaS Edition
-echo    Vercel + Neon Postgres + Cloudinary
+echo    Google Maps Data Extractor Pro - Next.js SaaS Edition
+echo    Vercel + Neon Postgres + Gemini AI
 echo ========================================================
 echo.
 cd /d "%~dp0"
 
-echo [1/3] Checking Python dependencies...
-python -m pip install -r requirements.txt --quiet
-python -m playwright install chromium --quiet
+echo [1/2] Checking dependencies...
+call npm install --legacy-peer-deps
 
-echo [2/3] Starting Flask server...
-echo    > Web App: http://localhost:5000
-echo    > Database: See .env for Neon Postgres or using local SQLite
 echo.
-echo [3/3] Opening browser...
-start "" "http://localhost:5000"
-python app.py
+echo [2/2] Starting Next.js SaaS App...
+echo    ^> Web App: http://localhost:3000
+echo.
+start "" "http://localhost:3000"
+call npm run dev
 
 pause

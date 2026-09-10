@@ -1,6 +1,12 @@
 # Environment variables
 .env
 .env.local
+.env.*.local
+
+# Node.js / Next.js
+node_modules/
+.next/
+out/
 
 # Python
 __pycache__/
@@ -15,7 +21,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -31,7 +36,7 @@ ENV/
 env.bak/
 venv.bak/
 
-# Database (keep local db ignored, Neon Postgres used in prod)
+# Database
 data/*.db
 data/*.sqlite
 *.sqlite3
