@@ -55,6 +55,8 @@ window.handleExtractSubmit = async function(e) {
     const niche = nInput ? nInput.value.trim() : '';
     const location = lInput ? lInput.value.trim() : '';
     const max_results = mSelect ? parseInt(mSelect.value, 10) : 50;
+    const showBrowser = document.getElementById('showBrowserCheck')?.checked ?? true;
+    const headless = !showBrowser;
 
     if (!niche) {
         window.showToast('Please enter a business niche or category', 'error');
@@ -70,7 +72,7 @@ window.handleExtractSubmit = async function(e) {
     const skippedCount = document.getElementById('skippedCount');
 
     if (banner) banner.classList.remove('hidden');
-    if (statusText) statusText.innerText = `Starting extraction for "${niche}" in "${location || 'All'}"...`;
+    if (statusText) statusText.innerText = `Launching browser for "${niche}" in "${location || 'All'}"...`;
     if (newCount) newCount.innerText = '0';
     if (skippedCount) skippedCount.innerText = '0';
 
@@ -78,21 +80,65 @@ window.handleExtractSubmit = async function(e) {
         const resp = await fetch('/api/extract/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ niche, location, max_results })
+            body: JSON.stringify({ niche, location, max_results, headless })
         });
         const data = await resp.json();
         if (!resp.ok) {
             throw new Error(data.error || 'Failed to start extraction');
         }
         currentSessionId = data.session_id;
-        window.showToast('Extraction started! Existing leads will be auto-skipped.');
+        window.showToast('Extraction started! Opening Google Maps...');
         initSSE();
+        startStatusPolling();
     } catch (err) {
         setExtractingUI(false);
+        stopStatusPolling();
         window.showToast(err.message || 'Error starting extraction', 'error');
         if (statusText) statusText.innerText = 'Error starting extraction.';
     }
 };
+
+let statusPollingTimer = null;
+
+function startStatusPolling() {
+    stopStatusPolling();
+    statusPollingTimer = setInterval(async () => {
+        if (!isExtracting) {
+            stopStatusPolling();
+            return;
+        }
+        try {
+            const res = await fetch('/api/extract/status');
+            if (res.ok) {
+                const s = await res.json();
+                const statusText = document.getElementById('statusText');
+                const newCount = document.getElementById('newCount');
+                const skippedCount = document.getElementById('skippedCount');
+                if (newCount && s.new_count !== undefined) newCount.innerText = s.new_count;
+                if (skippedCount && s.skipped_count !== undefined) skippedCount.innerText = s.skipped_count;
+                if (statusText && s.current_item) statusText.innerText = s.current_item;
+
+                if (s.status === 'completed' || s.status === 'stopped' || s.status === 'error') {
+                    stopStatusPolling();
+                    setExtractingUI(false);
+                    if (statusText) statusText.innerText = `Extraction ${s.status}!`;
+                    window.showToast(`Extraction ${s.status}!`);
+                    setTimeout(async () => {
+                        await window.loadDashboard();
+                        if (s.session_id) openSessionById(s.session_id);
+                    }, 1200);
+                }
+            }
+        } catch (_) {}
+    }, 1500);
+}
+
+function stopStatusPolling() {
+    if (statusPollingTimer) {
+        clearInterval(statusPollingTimer);
+        statusPollingTimer = null;
+    }
+}
 
 window.handleStopExtract = async function() {
     const stopBtn = document.getElementById('stopExtractBtn');
@@ -214,7 +260,11 @@ function handleSSEMessage(msg) {
     const newCount = document.getElementById('newCount');
     const skippedCount = document.getElementById('skippedCount');
 
-    if (msg.event === 'new_lead') {
+    if (msg.event === 'status_update') {
+        const text = msg.data?.message || msg.current_item || '';
+        if (statusText && text) statusText.innerText = text;
+
+    } else if (msg.event === 'new_lead') {
         if (newCount) newCount.innerText = msg.new_count || 0;
         const name = msg.data?.name || '';
         if (statusText) statusText.innerText = `Extracted: ${name}`;
@@ -222,18 +272,19 @@ function handleSSEMessage(msg) {
     } else if (msg.event === 'lead_skipped') {
         if (skippedCount) skippedCount.innerText = msg.skipped_count || 0;
         const name = msg.data?.name || '';
-        if (statusText) statusText.innerText = `Skipped (Already exists): ${name}`;
+        if (statusText) statusText.innerText = `Skipped (Duplicate): ${name}`;
 
     } else if (msg.event === 'extracting_lead') {
         const name = msg.data?.name || '';
-        if (statusText) statusText.innerText = `Checking details: ${name}...`;
+        if (statusText) statusText.innerText = `🔍 Reading details: ${name}...`;
 
     } else if (msg.event === 'completed' || msg.event === 'stopped') {
         setExtractingUI(false);
+        stopStatusPolling();
         const finalNew = msg.new_count || (newCount ? newCount.innerText : 0);
         const finalSkip = msg.skipped_count || (skippedCount ? skippedCount.innerText : 0);
         if (statusText) {
-            statusText.innerText = `Extraction finished! ${finalNew} new leads saved, ${finalSkip} duplicates skipped.`;
+            statusText.innerText = `Extraction ${msg.event}! ${finalNew} new leads saved, ${finalSkip} duplicates skipped.`;
         }
         window.showToast(`Extraction ${msg.event}! ${finalNew} new leads added.`);
 
@@ -247,6 +298,7 @@ function handleSSEMessage(msg) {
 
     } else if (msg.event === 'error') {
         setExtractingUI(false);
+        stopStatusPolling();
         const err = msg.data?.error || 'Extraction encountered an error.';
         if (statusText) statusText.innerText = `Error: ${err}`;
         window.showToast(err, 'error');

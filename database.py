@@ -17,17 +17,49 @@ if IS_POSTGRES and DATABASE_URL.startswith("postgres://"):
 DB_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 SQLITE_PATH = os.path.join(DB_DIR, "gmap_extractor.db")
 
+_pg_pool = None
+
+def get_pg_pool():
+    global _pg_pool
+    if _pg_pool is None and IS_POSTGRES:
+        import psycopg2.pool
+        try:
+            _pg_pool = psycopg2.pool.ThreadedConnectionPool(1, 10, DATABASE_URL)
+        except Exception as e:
+            print(f"[DB] Warning: Could not create connection pool: {e}")
+    return _pg_pool
+
 def get_connection():
     if IS_POSTGRES:
+        pool = get_pg_pool()
+        if pool:
+            return pool.getconn()
         import psycopg2
-        import psycopg2.extras
-        conn = psycopg2.connect(DATABASE_URL)
-        return conn
+        return psycopg2.connect(DATABASE_URL)
     else:
         os.makedirs(DB_DIR, exist_ok=True)
         conn = sqlite3.connect(SQLITE_PATH)
         conn.row_factory = sqlite3.Row
         return conn
+
+def release_connection(conn):
+    if IS_POSTGRES:
+        pool = get_pg_pool()
+        if pool:
+            try:
+                pool.putconn(conn)
+                return
+            except Exception:
+                pass
+        try:
+            conn.close()
+        except Exception:
+            pass
+    else:
+        try:
+            conn.close()
+        except Exception:
+            pass
 
 def execute_query(query: str, params: Tuple = (), fetch_one: bool = False, fetch_all: bool = False, commit: bool = False) -> Any:
     conn = get_connection()
@@ -58,7 +90,7 @@ def execute_query(query: str, params: Tuple = (), fetch_one: bool = False, fetch
         cursor.close()
         return result
     finally:
-        conn.close()
+        release_connection(conn)
 
 def init_db():
     conn = get_connection()

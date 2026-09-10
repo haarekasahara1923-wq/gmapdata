@@ -45,6 +45,7 @@ def extract_email_from_website(website_url: str, timeout: int = 4) -> Optional[s
 
 class GoogleMapsScraper:
     def __init__(self, session_id: str, niche: str, location: str, max_results: int = 50,
+                 headless: bool = False,
                  on_update: Optional[Callable[[Dict], None]] = None):
         self.session_id = session_id
         self.niche = niche.strip()
@@ -52,12 +53,13 @@ class GoogleMapsScraper:
         self.query = f"{self.niche} in {self.location}" if self.location else self.niche
         self.clean_niche = database.normalize_text(self.niche)
         self.max_results = max_results
+        self.headless = headless
         self.on_update = on_update
 
         self.stop_event = threading.Event()
         self.new_count = 0
         self.skipped_count = 0
-        self.current_item = ""
+        self.current_item = "Initializing..."
         self.status = "initializing"
         self.latest_leads = []
 
@@ -82,15 +84,19 @@ class GoogleMapsScraper:
         database.create_session(
             self.session_id, self.niche, self.location, self.query, self.max_results
         )
-        self._notify("started")
+        self.current_item = f"🌐 Launching browser for '{self.query}'..."
+        self._notify("started", {"message": self.current_item})
 
         encoded_query = urllib.parse.quote_plus(self.query)
         maps_url = f"https://www.google.com/maps/search/{encoded_query}?hl=en"
 
         try:
             with sync_playwright() as p:
+                self.current_item = "🌐 Opening Google Maps..."
+                self._notify("status_update", {"message": self.current_item})
+
                 browser = p.chromium.launch(
-                    headless=True,
+                    headless=self.headless,
                     args=[
                         "--disable-blink-features=AutomationControlled",
                         "--no-sandbox",
@@ -102,6 +108,10 @@ class GoogleMapsScraper:
                     user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                 )
                 page = context.new_page()
+
+                self.current_item = f"🔍 Searching Google Maps: '{self.query}'..."
+                self._notify("status_update", {"message": self.current_item})
+
                 page.goto(maps_url, wait_until="domcontentloaded", timeout=45000)
 
                 # Consent handling

@@ -102,6 +102,9 @@ def start_extraction():
     niche = (data.get('niche') or "").strip()
     location = (data.get('location') or "").strip()
     max_results = int(data.get('max_results') or 50)
+    # If explicitly passed use it; otherwise False for local (visible browser) and True if SCRAPER_HEADLESS=true
+    env_headless = os.getenv("SCRAPER_HEADLESS", "false").lower() in ("1", "true")
+    headless = data.get('headless', env_headless)
 
     if not niche:
         return jsonify({"error": "Please specify a niche or business category."}), 400
@@ -112,6 +115,7 @@ def start_extraction():
         niche=niche,
         location=location,
         max_results=max_results,
+        headless=headless,
         on_update=on_scraper_update
     )
 
