@@ -13,6 +13,7 @@ load_dotenv()
 import database
 import exporter
 import cloudinary_service
+import gemini_extractor
 from scraper import GoogleMapsScraper
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
@@ -50,6 +51,7 @@ def system_status():
     return jsonify({
         "database": stats.get("database_type", "SQLite"),
         "cloudinary": cloudinary_service.is_cloudinary_configured(),
+        "gemini": gemini_extractor.is_gemini_available(),
         "stats": stats
     })
 
@@ -95,14 +97,14 @@ def get_leads():
 def start_extraction():
     global active_scraper, active_session_id
 
-    if active_scraper and active_scraper.status in ('running', 'initializing'):
+    if active_scraper and getattr(active_scraper, 'status', None) in ('running', 'initializing'):
         return jsonify({"error": "An extraction is already in progress. Please wait or click Stop."}), 400
 
     data = request.get_json() or {}
     niche = (data.get('niche') or "").strip()
     location = (data.get('location') or "").strip()
     max_results = int(data.get('max_results') or 50)
-    # If explicitly passed use it; otherwise False for local (visible browser) and True if SCRAPER_HEADLESS=true
+    show_browser = data.get('show_browser', True)
     env_headless = os.getenv("SCRAPER_HEADLESS", "false").lower() in ("1", "true")
     headless = data.get('headless', env_headless)
 
@@ -110,17 +112,45 @@ def start_extraction():
         return jsonify({"error": "Please specify a niche or business category."}), 400
 
     active_session_id = f"sess_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
-    active_scraper = GoogleMapsScraper(
-        session_id=active_session_id,
-        niche=niche,
-        location=location,
-        max_results=max_results,
-        headless=headless,
-        on_update=on_scraper_update
-    )
+    is_vercel = bool(os.getenv("VERCEL"))
+    use_gemini = gemini_extractor.is_gemini_available() and (is_vercel or not show_browser)
 
-    t = threading.Thread(target=active_scraper.run, daemon=True)
-    t.start()
+    if use_gemini:
+        active_scraper = gemini_extractor.GeminiExtractor(
+            session_id=active_session_id,
+            niche=niche,
+            location=location,
+            max_results=max_results,
+            on_update=on_scraper_update
+        )
+
+        if is_vercel:
+            # On Vercel serverless, run synchronously to prevent Lambda freeze
+            active_scraper.run()
+            return jsonify({
+                "success": True,
+                "session_id": active_session_id,
+                "niche": niche,
+                "location": location,
+                "max_results": max_results,
+                "new_count": active_scraper.new_count,
+                "skipped_count": active_scraper.skipped_count,
+                "status": active_scraper.status
+            })
+        else:
+            t = threading.Thread(target=active_scraper.run, daemon=True)
+            t.start()
+    else:
+        active_scraper = GoogleMapsScraper(
+            session_id=active_session_id,
+            niche=niche,
+            location=location,
+            max_results=max_results,
+            headless=headless,
+            on_update=on_scraper_update
+        )
+        t = threading.Thread(target=active_scraper.run, daemon=True)
+        t.start()
 
     return jsonify({
         "success": True,

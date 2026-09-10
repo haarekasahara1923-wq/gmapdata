@@ -80,13 +80,27 @@ window.handleExtractSubmit = async function(e) {
         const resp = await fetch('/api/extract/start', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ niche, location, max_results, headless })
+            body: JSON.stringify({ niche, location, max_results, headless, show_browser: showBrowser })
         });
         const data = await resp.json();
         if (!resp.ok) {
             throw new Error(data.error || 'Failed to start extraction');
         }
         currentSessionId = data.session_id;
+
+        if (data.status === 'completed') {
+            setExtractingUI(false);
+            if (newCount) newCount.innerText = data.new_count || 0;
+            if (skippedCount) skippedCount.innerText = data.skipped_count || 0;
+            if (statusText) statusText.innerText = `Extraction finished! ${data.new_count || 0} leads saved, ${data.skipped_count || 0} duplicates skipped.`;
+            window.showToast(`Extraction completed! ${data.new_count || 0} leads added.`);
+            setTimeout(async () => {
+                await window.loadDashboard();
+                openSessionById(data.session_id);
+            }, 800);
+            return;
+        }
+
         window.showToast('Extraction started! Opening Google Maps...');
         initSSE();
         startStatusPolling();

@@ -148,7 +148,7 @@ def init_db():
         conn.commit()
         cursor.close()
     finally:
-        conn.close()
+        release_connection(conn)
 
 def normalize_text(text: Optional[str]) -> str:
     if not text:
@@ -252,7 +252,7 @@ def save_lead(lead_data: Dict) -> Tuple[bool, int]:
         cursor.close()
         return True, lead_id
     finally:
-        conn.close()
+        release_connection(conn)
 
 def create_session(session_id: str, niche: str, location: str, query: str, max_requested: int):
     conn = get_connection()
@@ -272,7 +272,7 @@ def create_session(session_id: str, niche: str, location: str, query: str, max_r
         conn.commit()
         cursor.close()
     finally:
-        conn.close()
+        release_connection(conn)
 
 def update_session(session_id: str, new_count: int, skipped_count: int, status: str = 'running', pdf_url: Optional[str] = None):
     conn = get_connection()
@@ -299,7 +299,7 @@ def update_session(session_id: str, new_count: int, skipped_count: int, status: 
         conn.commit()
         cursor.close()
     finally:
-        conn.close()
+        release_connection(conn)
 
 def update_session_pdf_url(session_id: str, pdf_url: str):
     if IS_POSTGRES:
